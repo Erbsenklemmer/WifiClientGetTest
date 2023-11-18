@@ -1,91 +1,99 @@
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 
 const char* ssid     = "Multipass Friends";
 const char* password = "Willkommen";
 
-/*
-    This sketch establishes a TCP connection to a "quote of the day" service.
-    It sends a "hello" message, and then prints received data.
-*/
+// Your Domain name with URL path or IP address with path
+String openWeatherMapApiKey = "0ca6e13112e998823ce775237c5fb829";
 
-const char* host = "djxmmx.net";
-const uint16_t port = 17;
+// Replace with your country code and city
+String city = "Porto";
+String countryCode = "PT";
 
-//String url = "http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de";
+// THE DEFAULT TIMER IS SET TO 10 SECONDS FOR TESTING PURPOSES
+// For a final application, check the API call limits per hour/minute to avoid getting blocked/banned
+unsigned long lastTime = 0;
+// Timer set to 10 minutes (600000)
+//unsigned long timerDelay = 600000;
+// Set timer to 10 seconds (10000)
+unsigned long timerDelay = 10000;
+
+String jsonBuffer;
 
 void setup() {
   Serial.begin(115200);
 
-  // We start by connecting to a WiFi network
-
-  Serial.println();
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  /* Explicitly set the ESP8266 to be a WiFi-client, otherwise, it by default,
-     would try to act as both a client and an access-point and could cause
-     network-issues with your other WiFi-devices on your WiFi-network. */
-  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
+  Serial.println("Connecting");
+  while(WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-
   Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
+ 
+  Serial.println("Timer set to 10 seconds (timerDelay variable), it will take 10 seconds before publishing the first reading.");
 }
 
 void loop() {
-  static bool wait = false;
-
-  Serial.print("connecting to ");
-  Serial.print(host);
-  Serial.print(':');
-  Serial.println(port);
-
-  // Use WiFiClient class to create TCP connections
-  WiFiClient client;
-  if (!client.connect(host, port)) {
-    Serial.println("connection failed");
-    delay(5000);
-    return;
-  }
-
-  // This will send a string to the server
-  Serial.println("sending data to server");
-  if (client.connected()) { client.println("hello from ESP8266"); }
-
-  // wait for data to be available
-  unsigned long timeout = millis();
-  while (client.available() == 0) {
-    if (millis() - timeout > 5000) {
-      Serial.println(">>> Client Timeout !");
-      client.stop();
-      delay(60000);
-      return;
+  // Send an HTTP GET request
+  if ((millis() - lastTime) > timerDelay) {
+    // Check WiFi connection status
+    if(WiFi.status()== WL_CONNECTED){
+      String serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&APPID=" + openWeatherMapApiKey + "&units=metric&lang=de";
+      //String serverPath = "http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de";
+      
+      jsonBuffer = httpGETRequest(serverPath.c_str());
+      //Serial.println(jsonBuffer);
     }
+    else {
+      Serial.println("WiFi Disconnected");
+    }
+    lastTime = millis();
   }
+}
 
-  // Read all the lines of the reply from server and print them to Serial
-  Serial.println("receiving from remote server");
-  // not testing 'client.connected()' since we do not need to send data here
-  while (client.available()) {
-    char ch = static_cast<char>(client.read());
-    Serial.print(ch);
+String httpGETRequest(const char* serverName) {
+  WiFiClient client;
+  HTTPClient http;
+    
+  // Your Domain name with URL path or IP address with path
+  http.begin(client, serverName);
+  
+  // Send HTTP POST request
+  int httpResponseCode = http.GET();
+  
+  String payload; 
+  WiFiClient* pClientStream;
+
+  if (httpResponseCode>0) {
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    //payload = http.getString();
+    pClientStream = http.getStreamPtr();
+
+    Serial.printf("length: %d\n", http.getSize());
+
+    while (pClientStream && pClientStream->available())
+    {
+      char c = pClientStream->read();
+      payload += c;
+      Serial.print(c);
+    }
+    Serial.printf("\nStream is available: %d\n", pClientStream->available());
+    Serial.flush();
+    Serial.println("done read");
   }
-
-  // Close the connection
-  Serial.println();
-  Serial.println("closing connection");
-  client.stop();
-
-  if (wait) {
-    delay(300000);  // execute once every 5 minutes, don't flood remote service
+  else {
+    Serial.print("Error code: ");
+    Serial.println(httpResponseCode);
   }
-  wait = false;
+  // Free resources
+  http.end();
+
+  Serial.println("waiting for next call\n-------------");
+
+  return payload;
 }
