@@ -54,7 +54,8 @@ void loop() {
   Serial.printf("Getting url: %s\n", url.c_str());
 
   WiFiClient client;
-  HttpClient http(client, "217.70.184.38");
+  //HttpClient http(client, "217.70.184.38");
+  HttpClient http(client, "api.openweathermap.org");
 
   bool isBody = false;
   char c;
@@ -64,10 +65,10 @@ void loop() {
   int httpCode = http.get("http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
   Serial.printf("[HTTP] GET... code: %d\n", httpCode);
 
-  int statusCode = http.responseStatusCode();
-  String response = http.responseBody();
-  Serial.printf("responseStatusCode: %d\n", statusCode);
-  Serial.printf("responseBody: %s\n", response.c_str());
+  // int statusCode = http.responseStatusCode();
+  // String response = http.responseBody();
+  // Serial.printf("responseStatusCode: %d\n", statusCode);
+  // Serial.printf("responseBody: %s\n", response.c_str());
 
   if (httpCode == 0) {
 
@@ -76,15 +77,18 @@ void loop() {
     Serial.printf("available: %d\n", http.available());
 
     while (http.available() == 0) {
-      if ((millis() - lost_do) > lostTest) {
-        Serial.println("lost in client with a timeout");
+      const unsigned long diff = millis() - lost_do;
+      if (diff > lostTest) {
+        Serial.printf("\nlost in client with a timeout. diff = %d\n", diff);
         client.stop();
-        ESP.restart();
+//        ESP.restart();
+        break;
       }
       Serial.print(".");
     }
-    Serial.println("");
-    while (http.available() > 0) {
+    Serial.printf("available: %d\n", http.available());
+    while (http.available() > 0) 
+    {
       c = http.read();
       if (c == '{' || c == '[') {
 
