@@ -64,6 +64,11 @@ void loop() {
   int httpCode = http.get("http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
   Serial.printf("[HTTP] GET... code: %d\n", httpCode);
 
+  int statusCode = http.responseStatusCode();
+  String response = http.responseBody();
+  Serial.printf("responseStatusCode: %d\n", statusCode);
+  Serial.printf("responseBody: %s\n", response.c_str());
+
   if (httpCode == 0) {
 
     //    WiFiClient * client = http.getStreamPtr();
