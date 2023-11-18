@@ -1,158 +1,91 @@
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-//#include <ESPHTTPClient.h>
-#include <ArduinoHttpClient.h>
 
-const char* ssid = "Multipass Friends";
+const char* ssid     = "Multipass Friends";
 const char* password = "Willkommen";
 
-// const char* ssid = "Multipass";
-// const char* password = "PlauderDaTSCH";
-char servername[] = "api.openweathermap.org";
+/*
+    This sketch establishes a TCP connection to a "quote of the day" service.
+    It sends a "hello" message, and then prints received data.
+*/
+
+const char* host = "djxmmx.net";
+const uint16_t port = 17;
+
+//String url = "http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de";
 
 void setup() {
-
   Serial.begin(115200);
 
+  // We start by connecting to a WiFi network
+
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  /* Explicitly set the ESP8266 to be a WiFi-client, otherwise, it by default,
+     would try to act as both a client and an access-point and could cause
+     network-issues with your other WiFi-devices on your WiFi-network. */
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+
   Serial.println("");
-  IPAddress myIP = WiFi.localIP();
-  Serial.println(myIP);
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 }
-
-void printState(int state) {
-
-  Serial.print("State: ");
-  switch (state) {
-    case CLOSE_WAIT:
-      Serial.println("Close wait");
-      break;
-    case CLOSING:
-      Serial.println("Closing");
-      break;
-    case CLOSED:
-      Serial.println("Closed");
-      break;
-    case ESTABLISHED:
-      Serial.println("Established");
-      break;
-    default:
-      Serial.println(String(state));
-      break;
-  }
-}
-
-//String url = "http://api.openweathermap.org/data/2.5/forecast?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de";
-String url = "http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de";
 
 void loop() {
+  static bool wait = false;
 
-  Serial.printf("Getting url: %s\n", url.c_str());
+  Serial.print("connecting to ");
+  Serial.print(host);
+  Serial.print(':');
+  Serial.println(port);
 
+  // Use WiFiClient class to create TCP connections
   WiFiClient client;
-  //HttpClient http(client, "217.70.184.38");
-  HttpClient http(client, "api.openweathermap.org");
+  if (!client.connect(host, port)) {
+    Serial.println("connection failed");
+    delay(5000);
+    return;
+  }
 
-  bool isBody = false;
-  char c;
-  unsigned long lostTest = 10000UL;
-  unsigned long lost_do = millis();
+  // This will send a string to the server
+  Serial.println("sending data to server");
+  if (client.connected()) { client.println("hello from ESP8266"); }
 
-  int httpCode = http.get("http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
-  Serial.printf("[HTTP] GET... code: %d\n", httpCode);
-
-  // int statusCode = http.responseStatusCode();
-  // String response = http.responseBody();
-  // Serial.printf("responseStatusCode: %d\n", statusCode);
-  // Serial.printf("responseBody: %s\n", response.c_str());
-
-  if (httpCode == 0) {
-
-    //    WiFiClient * client = http.getStreamPtr();
-    Serial.printf("connected: %d\n", http.connected());
-    Serial.printf("available: %d\n", http.available());
-
-    while (http.available() == 0) {
-      const unsigned long diff = millis() - lost_do;
-      if (diff > lostTest) {
-        Serial.printf("\nlost in client with a timeout. diff = %d\n", diff);
-        client.stop();
-//        ESP.restart();
-        break;
-      }
-      Serial.print(".");
-    }
-    Serial.printf("available: %d\n", http.available());
-    while (http.available() > 0) 
-    {
-      c = http.read();
-      if (c == '{' || c == '[') {
-
-        isBody = true;
-      }
-      if (isBody) {
-        //          parser.parse(c);
-        Serial.print(c);
-      }
-      // give WiFi and TCP/IP libraries a chance to handle pending events
-      yield();
+  // wait for data to be available
+  unsigned long timeout = millis();
+  while (client.available() == 0) {
+    if (millis() - timeout > 5000) {
+      Serial.println(">>> Client Timeout !");
+      client.stop();
+      delay(60000);
+      return;
     }
   }
 
-  // WiFiClient client;
+  // Read all the lines of the reply from server and print them to Serial
+  Serial.println("receiving from remote server");
+  // not testing 'client.connected()' since we do not need to send data here
+  while (client.available()) {
+    char ch = static_cast<char>(client.read());
+    Serial.print(ch);
+  }
 
-  //   if (client.connect(servername, 80)) {  //starts client connection, checks for connection
-  //     client.println("GET /data/2.5/weather?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
-  //     //client.println("GET /data/2.5/forecast?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
-  //     client.println("Host: api.openweathermap.org");
-  //     client.println("Connection: close");
-  //     client.println("User-Agent: ArduinoWiFi/1.1");
-  //     client.println("Pragma: no-cache");
-  //     client.println("Cache-Control: no-cache");
-  //     client.println("Accept: text/html,application/json");
-  //     client.println();
+  // Close the connection
+  Serial.println();
+  Serial.println("closing connection");
+  client.stop();
 
-  //     Serial.println("printed to client");
-  //   } else {
-  //     Serial.println("connection failed"); //error message if no client connect
-  //     Serial.println();
-  //   }
-
-  //   Serial.println("get abgesetzt");
-
-  //   printState(client.status());
-
-  //   while(client.connected() && !client.available()) {
-  //       delay(250); //waits for data
-  //       Serial.print(".");
-  //   }
-
-  //   Serial.println("printing state");
-  //   printState(client.status());
-
-  //   if (client.available())
-  //     Serial.println("data aveilible");
-  //   else
-  //     Serial.println("no data");
-
-  //   int i = 0;
-  //   String result;
-  //   while (client.connected() || client.available()) { //connected or data available
-  //     char c = client.read(); //gets byte from ethernet buffer
-  //     i++;
-  //     result = result+c;
-  //     if (i > 1024)
-  //     {
-  //       Serial.println(result);
-  //       result = "";
-  //       i = 0;
-  //     }
-  //   }
-  Serial.println("Ende und Aus");
-
-  delay(60 * 1000);
+  if (wait) {
+    delay(300000);  // execute once every 5 minutes, don't flood remote service
+  }
+  wait = false;
 }
