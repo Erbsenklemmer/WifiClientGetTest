@@ -15,14 +15,13 @@ void setup() {
   Serial.begin(115200);
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED ){
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("");
   IPAddress myIP = WiFi.localIP();
   Serial.println(myIP);
-
 }
 
 void printState(int state) {
@@ -59,90 +58,92 @@ void loop() {
 
   bool isBody = false;
   char c;
-  int size;
   unsigned long lostTest = 10000UL;
   unsigned long lost_do = millis();
-  
+
   int httpCode = http.get("http://api.openweathermap.org/data/3.0/onecall?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
   Serial.printf("[HTTP] GET... code: %d\n", httpCode);
 
-  if(httpCode == 0) {
+  if (httpCode == 0) {
 
-//    WiFiClient * client = http.getStreamPtr();
+    //    WiFiClient * client = http.getStreamPtr();
+    Serial.printf("connected: %d\n", http.connected());
+    Serial.printf("available: %d\n", http.available());
 
-    while(http.connected() || http.available()) {
-      while((size = http.available()) > 0) {
-		if ((millis() - lost_do) > lostTest) {
-			Serial.println ("lost in client with a timeout");
-			client.stop();
-			ESP.restart();
-	    }
-        c = http.read();
-        if (c == '{' || c == '[') {
-
-          isBody = true;
-        }
-        if (isBody) {
-//          parser.parse(c);
-          Serial.print(c);
-        }
-        // give WiFi and TCP/IP libraries a chance to handle pending events
-        yield();
+    while (http.available() == 0) {
+      if ((millis() - lost_do) > lostTest) {
+        Serial.println("lost in client with a timeout");
+        client.stop();
+        ESP.restart();
       }
+      Serial.print(".");
     }
-    Serial.println();
+    Serial.println("");
+    while (http.available() > 0) {
+      c = http.read();
+      if (c == '{' || c == '[') {
+
+        isBody = true;
+      }
+      if (isBody) {
+        //          parser.parse(c);
+        Serial.print(c);
+      }
+      // give WiFi and TCP/IP libraries a chance to handle pending events
+      yield();
+    }
   }
 
-// WiFiClient client; 
+  // WiFiClient client;
 
-//   if (client.connect(servername, 80)) {  //starts client connection, checks for connection
-//     client.println("GET /data/2.5/weather?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
-//     //client.println("GET /data/2.5/forecast?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
-//     client.println("Host: api.openweathermap.org");
-//     client.println("Connection: close");
-//     client.println("User-Agent: ArduinoWiFi/1.1");
-//     client.println("Pragma: no-cache");
-//     client.println("Cache-Control: no-cache");
-//     client.println("Accept: text/html,application/json");
-//     client.println();
+  //   if (client.connect(servername, 80)) {  //starts client connection, checks for connection
+  //     client.println("GET /data/2.5/weather?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
+  //     //client.println("GET /data/2.5/forecast?lat=48.8085568&lon=9.3774813&appid=0ca6e13112e998823ce775237c5fb829&units=metric&lang=de");
+  //     client.println("Host: api.openweathermap.org");
+  //     client.println("Connection: close");
+  //     client.println("User-Agent: ArduinoWiFi/1.1");
+  //     client.println("Pragma: no-cache");
+  //     client.println("Cache-Control: no-cache");
+  //     client.println("Accept: text/html,application/json");
+  //     client.println();
 
-//     Serial.println("printed to client");
-//   } else {
-//     Serial.println("connection failed"); //error message if no client connect
-//     Serial.println();
-//   }
+  //     Serial.println("printed to client");
+  //   } else {
+  //     Serial.println("connection failed"); //error message if no client connect
+  //     Serial.println();
+  //   }
 
-//   Serial.println("get abgesetzt");
+  //   Serial.println("get abgesetzt");
 
-//   printState(client.status());
+  //   printState(client.status());
 
-//   while(client.connected() && !client.available()) {
-//       delay(250); //waits for data
-//       Serial.print(".");
-//   }
+  //   while(client.connected() && !client.available()) {
+  //       delay(250); //waits for data
+  //       Serial.print(".");
+  //   }
 
-//   Serial.println("printing state");
-//   printState(client.status());
+  //   Serial.println("printing state");
+  //   printState(client.status());
 
-//   if (client.available())
-//     Serial.println("data aveilible");
-//   else 
-//     Serial.println("no data");
+  //   if (client.available())
+  //     Serial.println("data aveilible");
+  //   else
+  //     Serial.println("no data");
 
-//   int i = 0;
-//   String result;
-//   while (client.connected() || client.available()) { //connected or data available
-//     char c = client.read(); //gets byte from ethernet buffer
-//     i++;
-//     result = result+c;
-//     if (i > 1024)
-//     {
-//       Serial.println(result);
-//       result = "";
-//       i = 0;
-//     }
-//   }
+  //   int i = 0;
+  //   String result;
+  //   while (client.connected() || client.available()) { //connected or data available
+  //     char c = client.read(); //gets byte from ethernet buffer
+  //     i++;
+  //     result = result+c;
+  //     if (i > 1024)
+  //     {
+  //       Serial.println(result);
+  //       result = "";
+  //       i = 0;
+  //     }
+  //   }
   Serial.println("Ende und Aus");
 
-  delay(60*1000);
+  delay(60 * 1000);
 }
