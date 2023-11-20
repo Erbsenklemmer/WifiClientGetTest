@@ -19,6 +19,8 @@ unsigned long lastTime = 0;
 // Set timer to 10 seconds (10000)
 unsigned long timerDelay = 10000;
 
+unsigned int availableRemainingCounter = 0;
+
 String jsonBuffer;
 
 void setup() {
@@ -81,8 +83,16 @@ String httpGETRequest(const char* serverName) {
       char c = pClientStream->read();
       payload += c;
       Serial.print(c);
+
+      yield();//give the stream a chance to read the next character
     }
-    Serial.printf("\nStream is available: %d\n", pClientStream->available());
+    unsigned int availableRemaining = pClientStream->available();
+    if (availableRemaining > 0)
+    {
+      availableRemainingCounter++;
+    }
+    Serial.printf("\nStream is available: %d, is null %d times\n", availableRemaining, availableRemainingCounter);
+
     Serial.flush();
     Serial.println("done read");
   }
