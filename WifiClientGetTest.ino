@@ -1,5 +1,8 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+ #include <ESP8266WiFi.h>
+ #include <ESP8266HTTPClient.h>
+
+//#include <WiFi.h>
+//#include <HTTPClient.h>
 
 const char* ssid     = "Multipass Friends";
 const char* password = "Willkommen";
